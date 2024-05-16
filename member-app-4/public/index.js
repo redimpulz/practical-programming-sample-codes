@@ -1,4 +1,4 @@
-import { auth } from "./firebase.js";
+import { auth, firestore } from "./firebase.js";
 
 const ulRef = document.querySelector("ul");
 const inputRef = document.querySelector("#todo-task");
@@ -8,8 +8,11 @@ const submitButtonRef = document.querySelector("#submit-button");
 const cancelButtonRef = document.querySelector("#cancel-button");
 const logoutButtonRef = document.querySelector("#logout-button");
 
+let uid = "";
+
 auth.onAuthStateChanged(async (user) => {
   if (user) {
+    uid = user.uid;
     await handleGetItems();
   } else {
     location.href = "/login.html";
@@ -40,13 +43,17 @@ const handleSelectEditItem = ({ id, task, status }) => {
 };
 
 const handleGetItems = async () => {
-  const idToken = await auth.currentUser.getIdToken();
-  const res = await fetch("/todo", {
-    headers: {
-      Authorization: `Bearer ${idToken}`,
-    },
-  });
-  const todos = await res.json();
+  const snapShot = await firestore
+    .collection("todos")
+    .where("uid", "==", uid)
+    .where("deletedAt", "==", null)
+    .get();
+
+  const todos = snapShot.docs.map((doc) => ({
+    id: doc.id,
+    status: doc.data().status,
+    task: doc.data().task,
+  }));
 
   while (ulRef.firstChild) {
     ulRef.removeChild(ulRef.firstChild);
@@ -83,14 +90,12 @@ const handleGetItems = async () => {
 const handleAddItem = async () => {
   const value = inputRef.value;
   const status = selectRef.value;
-  const idToken = await auth.currentUser.getIdToken();
-  await fetch("/todo", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ task: value, status }),
+  await firestore.collection("todos").add({
+    task: value,
+    uid,
+    status: parseInt(status, 10),
+    createdAt: new Date(),
+    deletedAt: null,
   });
   await handleGetItems();
 };
@@ -99,24 +104,26 @@ const handleEditItem = async () => {
   const id = editItemIdRef.value;
   const task = inputRef.value;
   const status = selectRef.value;
-  const idToken = await auth.currentUser.getIdToken();
-  await fetch(`/todo/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ task, status }),
-  });
+  await firestore
+    .collection("todos")
+    .doc(id)
+    // .doc("FfHrMwXzYxXidVA8aphDZUhAiSQ2")
+    .update({
+      task,
+      status: parseInt(status, 10),
+    });
   await handleGetItems();
 };
 
 const handleDeleteItem = async (id) => {
-  const idToken = await auth.currentUser.getIdToken();
-  await fetch(`/todo/${id}`, {
-    method: "DELETE",
-    Authorization: `Bearer ${idToken}`,
-  });
+  await firestore
+    .collection("todos")
+    // .doc(id)
+    .doc("FfHrMwXzYxXidVA8aphDZUhAiSQ2")
+    // .delete();
+    .update({
+      deletedAt: new Date(),
+    });
   await handleGetItems();
 };
 

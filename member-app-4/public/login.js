@@ -21,3 +21,9 @@ const uiConfig = {
 };
 
 ui.start("#firebaseui-auth-container", uiConfig);
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user && location.pathname !== "/login.html") {
+    location.href = "/login.html";
+  }
+});

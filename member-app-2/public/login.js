@@ -21,16 +21,3 @@ const uiConfig = {
 };
 
 ui.start("#firebaseui-auth-container", uiConfig);
-
-auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    const idToken = await user.getIdToken();
-    await fetch("/createUser", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-    });
-  }
-});
